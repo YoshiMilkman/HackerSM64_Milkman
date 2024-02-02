@@ -97,6 +97,10 @@ struct RenderModeContainer renderModeTable_1Cycle[2] = {
         [LAYER_TRANSPARENT_DECAL] = G_RM_AA_XLU_SURF,
         [LAYER_TRANSPARENT] = G_RM_AA_XLU_SURF,
         [LAYER_TRANSPARENT_INTER] = G_RM_AA_XLU_SURF,
+        [LAYER_CIRCLE_SHADOW] = G_RM_CLD_SURF,
+        [LAYER_CIRCLE_SHADOW_TRANSPARENT] = G_RM_CLD_SURF,
+        [LAYER_SQUARE_SHADOW] = G_RM_CLD_SURF,
+        [LAYER_SQUARE_SHADOW_TRANSPARENT] = G_RM_CLD_SURF,
     } },
     [RENDER_ZB] = { {
         [LAYER_FORCE] = G_RM_ZB_OPA_SURF,
@@ -114,6 +118,10 @@ struct RenderModeContainer renderModeTable_1Cycle[2] = {
         [LAYER_TRANSPARENT_DECAL] = G_RM_AA_ZB_XLU_DECAL,
         [LAYER_TRANSPARENT] = G_RM_AA_ZB_XLU_SURF,
         [LAYER_TRANSPARENT_INTER] = G_RM_AA_ZB_XLU_INTER,
+        [LAYER_CIRCLE_SHADOW] = G_RM_AA_ZB_XLU_DECAL,
+        [LAYER_CIRCLE_SHADOW_TRANSPARENT] = G_RM_ZB_CLD_SURF,
+        [LAYER_SQUARE_SHADOW] = G_RM_AA_ZB_XLU_DECAL,
+        [LAYER_SQUARE_SHADOW_TRANSPARENT] = G_RM_ZB_CLD_SURF,
     } } };
 
 /* Rendermode settings for cycle 2 for all 13 layers. */
@@ -134,6 +142,10 @@ struct RenderModeContainer renderModeTable_2Cycle[2] = {
         [LAYER_TRANSPARENT_DECAL] = G_RM_AA_XLU_SURF2,
         [LAYER_TRANSPARENT] = G_RM_AA_XLU_SURF2,
         [LAYER_TRANSPARENT_INTER] = G_RM_AA_XLU_SURF2,
+        [LAYER_CIRCLE_SHADOW] = G_RM_CLD_SURF2,
+        [LAYER_CIRCLE_SHADOW_TRANSPARENT] = G_RM_CLD_SURF2,
+        [LAYER_SQUARE_SHADOW] = G_RM_CLD_SURF2,
+        [LAYER_SQUARE_SHADOW_TRANSPARENT] = G_RM_CLD_SURF2,
     } },
     [RENDER_ZB] = { {
         [LAYER_FORCE] = G_RM_ZB_OPA_SURF2,
@@ -151,6 +163,10 @@ struct RenderModeContainer renderModeTable_2Cycle[2] = {
         [LAYER_TRANSPARENT_DECAL] = G_RM_AA_ZB_XLU_DECAL2,
         [LAYER_TRANSPARENT] = G_RM_AA_ZB_XLU_SURF2,
         [LAYER_TRANSPARENT_INTER] = G_RM_AA_ZB_XLU_INTER2,
+        [LAYER_CIRCLE_SHADOW] = G_RM_AA_ZB_XLU_DECAL2, 
+        [LAYER_CIRCLE_SHADOW_TRANSPARENT] = G_RM_ZB_CLD_SURF2,
+        [LAYER_SQUARE_SHADOW] = G_RM_AA_ZB_XLU_DECAL2, 
+        [LAYER_SQUARE_SHADOW_TRANSPARENT] = G_RM_ZB_CLD_SURF2,
     } } };
 
 ALIGNED16 struct GraphNodeRoot *gCurGraphNodeRoot = NULL;
@@ -400,6 +416,14 @@ void geo_process_master_list_sub(struct GraphNodeMasterList *node) {
                                                      mode2List->modes[currLayer]);
             }
 #endif
+            if (currLayer == LAYER_CIRCLE_SHADOW) {
+                gSPDisplayList(gDisplayListHead++, dl_shadow_circle);
+            }
+
+            if (currLayer == LAYER_SQUARE_SHADOW) {
+                gSPDisplayList(gDisplayListHead++, dl_shadow_square);
+            }
+
             // Iterate through all the displaylists on the current layer.
             while (currList != NULL) {
                 // Add the display list's transformation to the master list.
@@ -421,6 +445,18 @@ void geo_process_master_list_sub(struct GraphNodeMasterList *node) {
 #endif
                 // Move to the next DisplayListNode.
                 currList = currList->next;
+            }
+
+            if (currLayer == LAYER_CIRCLE_SHADOW_TRANSPARENT) {
+                gSPTexture(gDisplayListHead++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
+                gSPSetGeometryMode(gDisplayListHead++, G_LIGHTING | G_CULL_BACK);
+                gDPSetCombineMode(gDisplayListHead++, G_CC_SHADE, G_CC_SHADE);
+            }
+
+            if (currLayer == LAYER_SQUARE_SHADOW_TRANSPARENT) {
+                gSPTexture(gDisplayListHead++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
+                gSPSetGeometryMode(gDisplayListHead++, G_LIGHTING | G_CULL_BACK);
+                gDPSetCombineMode(gDisplayListHead++, G_CC_SHADE, G_CC_SHADE);
             }
         }
     }
@@ -1013,10 +1049,18 @@ void geo_process_shadow(struct GraphNodeShadow *node) {
                 gCurrShadow.floorNormal, shadowPos, gCurrShadow.scale, gCurGraphNodeObject->angle[1]);
 
             inc_mat_stack();
-            geo_append_display_list(
-                (void *) VIRTUAL_TO_PHYSICAL(shadowList),
-                gCurrShadow.isDecal ? LAYER_TRANSPARENT_DECAL : LAYER_TRANSPARENT
-            );
+
+            // Set the common circle and square shadow types to the respective render layer.
+            s32 layer;
+            if (node->shadowType == SHADOW_CIRCLE) {
+                layer = gCurrShadow.isDecal ? LAYER_CIRCLE_SHADOW : LAYER_CIRCLE_SHADOW_TRANSPARENT;
+            } else if (node->shadowType == SHADOW_SQUARE) {
+                layer = gCurrShadow.isDecal ? LAYER_SQUARE_SHADOW : LAYER_SQUARE_SHADOW_TRANSPARENT;
+            } else {
+                layer = gCurrShadow.isDecal ? LAYER_TRANSPARENT_DECAL : LAYER_TRANSPARENT;
+            }
+
+            geo_append_display_list( (void *) VIRTUAL_TO_PHYSICAL(shadowList), layer);
 
             gMatStackIndex--;
         }
