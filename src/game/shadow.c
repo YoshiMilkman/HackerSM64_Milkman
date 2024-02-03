@@ -329,16 +329,32 @@ Gfx *create_shadow_below_xyz(Vec3f pos, s16 shadowScale, u8 shadowSolidity, s8 s
                 }
                 break;
             case SHADOW_SOLIDITY_NOT_YET_SET:
-                if (init_shadow(distToShadow, shadowScale, shadowType, shadowSolidity)) {
-                    return NULL;
+                // Make Shadows more opaque over water
+                if (floor == waterFloor || isEnvBox == TRUE) {
+                    s->solidity = 255;
+                    if (init_shadow(distToShadow, shadowScale, shadowType, /* overwriteSolidity */ 0)) {
+                        return NULL;
+                    }
+                } else {
+                    if (init_shadow(distToShadow, shadowScale, shadowType, shadowSolidity)) {
+                        return NULL;
+                    }
                 }
                 break;
             default:
                 return NULL;
         }
     } else {
-        if (init_shadow(distToShadow, shadowScale, shadowType, shadowSolidity)) {
-            return NULL;
+        // Make Shadows more opaque over water
+        if (floor == waterFloor || isEnvBox == TRUE) {
+            s->solidity = 255;
+            if (init_shadow(distToShadow, shadowScale, shadowType, /* overwriteSolidity */ 0)) {
+                return NULL;
+            }
+        } else {
+            if (init_shadow(distToShadow, shadowScale, shadowType, shadowSolidity)) {
+                return NULL;
+            }
         }
 
         // Get the scaling modifiers for rectangular shadows (Whomp and Spindel).
